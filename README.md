@@ -39,3 +39,6 @@ AÇÕES RELEVANTES: confere rescisão indireta também na tabela final de pedido
 ## Atualização 1.1.3 — sem busca na web
 
 Todas as buscas externas foram desativadas. Há somente uma chamada à IA para ler o PDF. Juiz ausente: NÃO LOCALIZADO — CONFERIR MANUALMENTE. O modelo continua configurável pela variável OPENAI_MODEL. O limite de upload no Vercel continua em 4 MB.
+
+## Atualização 1.1.4
+Aceita as 41 relevâncias em qualquer ordem, mantendo a validação de completude e duplicidade. Respostas inválidas da IA agora mostram a causa específica. Falhas técnicas registram código nos logs, sem conteúdo do PDF ou chave de API.

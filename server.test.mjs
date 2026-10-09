@@ -47,3 +47,6 @@ test('preserva juiz identificado nos documentos',()=>{
  const a=fixture();a.modules[8].content='JUIZ INFORMADO NO PDF';
  assert.equal(applyDocumentJudge(a).modules[8].content,'JUIZ INFORMADO NO PDF');
 });
+
+test('lista completa fora da ordem é aceita sem omitir relevâncias',()=>{const a=fixture();a.audit.relevances[33].identified=true;a.audit.relevances[33].evidence='Pedido sucessivo na PI';a.audit.relevances.reverse();assert.match(applyRelevances(a).modules[16].content,/RESCISÃO INDIRETA/);});
+test('resposta inválida da IA mostra causa específica ao operador',async()=>withServer({env,fetcher:async()=>new Response(JSON.stringify({status:'completed',output:[{content:[{type:'output_text',text:'{}'}]}]}))},async base=>{const r=await fetch(base+'/api/analyze',{method:'POST',headers:{Authorization:'Bearer test-access','Content-Type':'application/pdf'},body:'%PDF-1.4 mock'});assert.equal(r.status,502);const data=await r.json();assert.equal(data.code,'INVALID_AI_RESPONSE');assert.match(data.error,/todos os módulos/);}));

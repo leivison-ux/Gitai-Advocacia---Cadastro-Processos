@@ -1,5 +1,5 @@
 import {readFile} from 'node:fs/promises';
-export const VERSION='1.1.3';
+export const VERSION='1.1.4';
 export const OPTIONS=(await readFile(new URL('./regras/opcoes.md',import.meta.url),'utf8')).split('\n').filter(l=>/^\d+\. /.test(l)).map(l=>l.replace(/^\d+\. /,''));
 export const auditSchema={type:'object',properties:{judgeInDocuments:{type:'boolean'},court:{type:'string'},trtNumber:{type:['integer','null']},admissionSalary:{type:['number','null']},dismissalSalary:{type:['number','null']},relevances:{type:'array',items:{type:'object',properties:{option:{type:'string',enum:OPTIONS},identified:{type:'boolean'},evidence:{type:'string'}},required:['option','identified','evidence'],additionalProperties:false}}},required:['judgeInDocuments','court','trtNumber','admissionSalary','dismissalSalary','relevances'],additionalProperties:false};
 export const auditInstructions='Preencher audit: judgeInDocuments somente true se nome do juiz constar dos documentos. court: Vara e cidade do módulo 3; trtNumber: região do TRT (1 a 24), null se indeterminada. No módulo 13, apresentar Dados Trabalhistas na tabela Campo | Admissão | Demissão, com uma linha Salário contendo apenas um valor monetário por coluna, ou NÃO INFORMADO. Comissões e remunerações distintas devem aparecer somente em pendências. admissionSalary e dismissalSalary são números em reais extraídos EXCLUSIVAMENTE desses campos, null se ausentes. NÃO usar comissões ou remuneração externa a esses campos. relevances: avaliar TODAS as 41 opções na ordem de opcoes.md, uma ocorrência por opção; identified boolean e evidence com fato e página da PI quando identificado. Ausência de evidência impede inclusão. Não restringir análise de relevância ao rol final. RESCISÃO INDIRETA deve ser identificada também quando formulada como pedido sucessivo, subsidiário ou alternativo; não exige pedido principal nem deferimento judicial. Não pesquisar dados pessoais na web.';
@@ -9,7 +9,8 @@ export function applyRelevances(result){
  if(!a||typeof a.judgeInDocuments!=='boolean'||typeof a.court!=='string'||!Array.isArray(a.relevances)||a.relevances.length!==41)throw Error('Auditoria incompleta');
  if(a.trtNumber!==null&&(!Number.isInteger(a.trtNumber)||a.trtNumber<1||a.trtNumber>24))throw Error('TRT inválido');
  for(const key of ['admissionSalary','dismissalSalary'])if(a[key]!==null&&(typeof a[key]!=='number'||!Number.isFinite(a[key])||a[key]<0))throw Error('Salário inválido');
- a.relevances.forEach((v,i)=>{if(v.option!==OPTIONS[i]||typeof v.identified!=='boolean'||typeof v.evidence!=='string')throw Error('Lista de relevâncias inválida');});
+ if(new Set(a.relevances.map(v=>v.option)).size!==41)throw Error('Lista de relevâncias inválida');
+ a.relevances=OPTIONS.map(option=>{const v=a.relevances.find(v=>v.option===option);if(!v||typeof v.identified!=='boolean'||typeof v.evidence!=='string')throw Error('Lista de relevâncias inválida');return v;});
  // A opção salarial é decidida pelo servidor, não pela classificação da IA.
  const row=result.modules[12].content.split('\n').find(l=>/^\|\s*Sal[áa]rio\s*\|/i.test(l));
  const cells=row?.split('|').slice(2,4)||[];

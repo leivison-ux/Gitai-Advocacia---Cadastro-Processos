@@ -59,7 +59,9 @@ export function createApp({env=process.env,fetcher=fetch}={}){
      if(body.status!=='completed')return send(res,502,{error:'A análise ficou incompleta. O PDF pode exceder o contexto do modelo. Divida o processo e tente novamente.'});
      const content=(body.output||[]).flatMap(o=>o.content||[]);
      const text=content.filter(c=>c.type==='output_text').map(c=>c.text).join('');
-     const result=applyRelevances(validateResult(JSON.parse(text)));
+     let result;
+     try{result=applyRelevances(validateResult(JSON.parse(text)));}
+     catch(e){const reason=e instanceof SyntaxError?'JSON inválido':e.message;console.error('CADASTRO_INVALID_RESPONSE',reason);return send(res,502,{error:'A IA devolveu uma análise fora do formato exigido ('+reason+'). Nenhum cadastro foi concluído. Tente novamente ou compare usando gpt-4.1.',code:'INVALID_AI_RESPONSE',version:VERSION});}
      const sources=[];
      applyDocumentJudge(result);
      delete result.audit;
@@ -71,7 +73,7 @@ export function createApp({env=process.env,fetcher=fetch}={}){
    if(req.method!=='GET'||!files[url.pathname])return send(res,404,{error:'Página não encontrada.'});
    const file=files[url.pathname];res.setHeader('Content-Type',file.endsWith('.js')?'text/javascript; charset=utf-8':file.endsWith('.css')?'text/css; charset=utf-8':'text/html; charset=utf-8');
    res.end(await readFile(new URL('public/'+file,root)));
-  }catch(e){if(!res.headersSent)send(res,e.name==='TimeoutError'?504:500,{error:e.name==='TimeoutError'?'A leitura excedeu cinco minutos. Tente um arquivo menor.':'Não foi possível concluir a análise. Tente novamente.'});else res.end();}
+  }catch(e){console.error('CADASTRO_ANALYSIS_FAILED',{name:e.name,code:e.code||e.cause?.code||'UNKNOWN'});if(!res.headersSent)send(res,e.name==='TimeoutError'?504:500,{error:e.name==='TimeoutError'?'A leitura excedeu cinco minutos. Tente um arquivo menor.':'Não foi possível concluir a análise. Tente novamente.'});else res.end();}
  });
 }
 if(process.argv[1]===fileURLToPath(import.meta.url)){const server=createApp();server.requestTimeout=360000;server.listen(Number(process.env.PORT)||3000,'0.0.0.0',()=>console.log('Cadastrador iniciado.'));}

@@ -31,3 +31,7 @@ Na Vercel, esta versão aceita PDF de até 4 MB por causa do limite de payload d
 
 ## Versão 1.1.1 — plugin 0.1.10
 Sincroniza os três textos da versão atual do plugin. Executa busca obrigatória em uma segunda chamada de IA quando não há juiz nos documentos, com tool_choice required. Exige chamada de busca executada e URL citada do respectivo TRT para aceitar o titular. Se falhar, informa a pendência concreta. A leitura inicial avalia todas as 41 opções de relevância com evidência; o servidor decide o item salarial pelo maior salário de admissão/demissão. Não altera salários trabalhistas. /api/health mostra versões para conferir o deploy. As mudanças do plugin não são transferidas automaticamente para o site: é necessário atualizar estes textos no GitHub e publicar.
+
+## Atualização 1.1.2
+
+AÇÕES RELEVANTES: confere rescisão indireta também na tabela final de pedidos, incluindo pedidos sucessivos ou alternativos. Exibe fundamento para cada relevância e explica o critério salarial quando o maior salário fixo é inferior a R$ 5.000,00.

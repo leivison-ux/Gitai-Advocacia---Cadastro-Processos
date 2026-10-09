@@ -13,5 +13,20 @@ test('data inválida e origem externa são rejeitadas',async()=>withServer({env}
 test('respostas incompletas ou fora da ordem são rejeitadas',()=>{assert.throws(()=>validateResult({...fixture(),modules:[]}));const bad=fixture();bad.modules[0].number=2;assert.throws(()=>validateResult(bad));assert.equal(validateResult(fixture()).modules.length,19);});
 test('salário relevante usa apenas campos visíveis de admissão/demissão',()=>{const a=fixture();a.audit.admissionSalary=7000;a.audit.dismissalSalary=7000;a.audit.relevances[31].identified=true;a.audit.relevances[31].evidence='remuneração com comissões 7 mil';a.modules[12].content='| Campo | Admissão | Demissão |\n| Salário | R$ 1.814,00 | R$ 2.500,00 |';assert.doesNotMatch(applyRelevances(a).modules[16].content,/SALÁRIO IGUAL/);a.modules[12].content='| Salário | R$ 1.814,00 | R$ 5.000,00 |';assert.match(applyRelevances(a).modules[16].content,/SALÁRIO IGUAL/);});
 test('todas as opções são auditadas e exigem evidência',()=>{const a=fixture();a.audit.relevances[33]={option:OPTIONS[33],identified:true,evidence:'PI p. 8: pedido de rescisão indireta'};a.audit.relevances[6].identified=true;const r=applyRelevances(a);assert.match(r.modules[16].content,/RESCISÃO INDIRETA/);assert.doesNotMatch(r.modules[16].content,/ASSÉDIO SEXUAL/);a.audit.relevances.pop();assert.throws(()=>applyRelevances(a));});
+test('recupera pedido sucessivo omitido pela auditoria e explica critério salarial',()=>{
+ const a=fixture();
+ a.modules[1].content='| Pedido | Valor total do pedido |\n| --- | --- |\n| NULIDADE DO PEDIDO DE DEMISSÃO OU, SUCESSIVAMENTE, RESCISÃO INDIRETA | SEM VALOR INDIVIDUALIZADO |';
+ a.modules[12].content='| Campo | Admissão | Demissão |\n| Salário | R$ 1.814,00 | R$ 2.500,00 |';
+ const content=applyRelevances(a).modules[16].content;
+ assert.match(content,/Relevância identificada: RESCISÃO INDIRETA/);
+ assert.match(content,/Fundamento: Pedido expresso/);
+ assert.match(content,/Foram comparadas as 41 opções/);
+ assert.match(content,/R\$\s*2\.500,00/);
+ assert.doesNotMatch(content,/Relevância identificada: RECLAMANTE COM SALÁRIO/);
+});
+test('menção narrativa fora da tabela de pedidos não aciona conferência de rescisão indireta',()=>{
+ const a=fixture();a.modules[1].content='Não há pedido de rescisão indireta; a expressão aparece somente em jurisprudência.';
+ assert.doesNotMatch(applyRelevances(a).modules[16].content,/Relevância identificada: RESCISÃO INDIRETA/);
+});
 test('juiz faltante força busca e exige fonte do TRT consultada',async()=>{const a=fixture();a.audit.judgeInDocuments=false;let captured;const sourceUrl='https://trt15.jus.br/balcao-virtual-1grau';const fetcher=async(_,o)=>{captured=JSON.parse(o.body);return new Response(JSON.stringify({status:'completed',output:[{type:'web_search_call',status:'completed'},{content:[{type:'output_text',text:JSON.stringify({verified:true,name:'Juiz Teste',sourceUrl,evidence:'Linha específica da 5ª Vara: titular Juiz Teste',reason:''}),annotations:[{type:'url_citation',url:sourceUrl}]}]}]}));};const sources=await lookupJudge(a,{env,fetcher,today:'09/10/2026'});assert.equal(captured.tool_choice,'required');assert.equal(sources.length,1);assert.match(a.modules[8].content,/JUIZ TESTE/);});
 test('nome sem busca ou citação não é aceito',async()=>{const a=fixture();a.audit.judgeInDocuments=false;const fetcher=async()=>new Response(JSON.stringify({status:'completed',output:[{content:[{type:'output_text',text:JSON.stringify({verified:true,name:'Nome de memória',sourceUrl:'https://trt15.jus.br/exemplo',evidence:'exemplo',reason:''}),annotations:[]}]}]}));await lookupJudge(a,{env,fetcher,today:'09/10/2026'});assert.match(a.modules[8].content,/NÃO CONFIRMADO/);assert.doesNotMatch(a.modules[8].content,/Nome de memória/);});
